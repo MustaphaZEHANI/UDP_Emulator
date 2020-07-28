@@ -1,8 +1,14 @@
 #ifndef UDP_H_
 #define UDP_H_
 
-#define debug 1
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+#define debug 1 //Set it to 1 to activate Debug Message
+
+
+// Variables 
 
 enum
 {
@@ -10,16 +16,19 @@ enum
 };
 
 
+// Functions
 
-int Parsing_CodeByte (char msg[]);
+int Byte_Parser (char* msg_parsed , char* msg );
 
-int Parsing_SeqNrByte (int SeqNr , char msg[]);
+int Parsing_CodeByte (char* msg);
 
-int Parsing_RelaySignalBytes (int SeqNr , char msg[]);
+int Parsing_SeqNrByte (int SeqN , char* msg_parsed , char* msg);
 
-int Send_ACK (int SeqNr );
+int Parsing_RelaySignalBytes (char* msg_parsed , char* msg);
+/*
+void Send_ACK (int SeqNr );
 
-int Send_Relay_State(int SeqNr , char msg[]);
+int Send_Relay_State(int SeqNr , char* msg); */
 
 
   /// #### SENT  MESSAGE  ####
@@ -27,15 +36,12 @@ int Send_Relay_State(int SeqNr , char msg[]);
   /**** ACK Signal ****/ 
   // Type : Send Signal 
   // 2 bytes: code (0x11) , sequence nr.
-  // Role :
 
   /**** Relay State Signal ****/
   // Type : Send Signal 
   // 3 bytes : code (0x41) , sequence nr , relay state ( 0 or 1 ).
 
-  /////////////////////
-  /*   UDP Signals   */
-  /////////////////////
+
   /// #### RECEIVED MESSAGE  ####
   /**** Relay Signal ****/
   // Type : Receive Signal
