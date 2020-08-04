@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define debug 1 //Set it to 1 to activate Debug Message
+#define debug 0 //Set it to 1 to activate Debug Message
 
 
 /*-----------------*/
@@ -28,8 +28,8 @@
 #define GET_STATE_SIGNAL_LENGTH   5
 #define QUIT_SIGNAL_LENGTH        5
 
-// Relay State Signal (send) : sequence number
-#define RELAY_STATE_SEQNUMB_SEND  1 //0x01
+// Relay State Signal : sequence number
+#define RELAY_STATE_SEQ_NUMB  1 //0x01
 
 // Received Singal
 enum ReceivedSignal
@@ -42,6 +42,7 @@ struct Relay
 {
   int Value; //Default Value Close
 } Relay_0, Relay_1 ;
+
 
 
 //Relay Count
@@ -86,30 +87,5 @@ int Parsing_RelaySignalBytes (char* msg_parsed , char* msg);
 void Send_ACK (int* SeqNr );
 
 void Send_Relay_State(char* msg_parsed , char* msg);
-
-
-  /// #### SENT  MESSAGE  ####
-
-  /**** ACK Signal ****/ 
-  // Type : Send Signal 
-  // 2 bytes: code (0x11) , sequence nr.
-
-  /**** Relay State Signal ****/
-  // Type : Send Signal 
-  // 3 bytes : code (0x41) , sequence nr , relay state ( 0 or 1 ).
-
-
-  /// #### RECEIVED MESSAGE  ####
-  /**** Relay Signal ****/
-  // Type : Receive Signal
-  // 4 bytes : code (0x21) , sequence nr , count , relay number ( 0 or 1 ) , relay value.
-
-   /**** Get State Signal ****/
-  // Type : Receive Signal
-  // 2 bytes : code (0x31) , sequence nr.
-
-  /**** Quit Signal ****/
-  // Type : Receive Signal
-  // 2 bytes : code (0x51) , sequence nr.
 
 #endif

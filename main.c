@@ -14,21 +14,22 @@ int main (int argc, char** argv)
 
   if (argc == 2)
   {
-    if (debug) 
-      printf ("[DEBUG_MESSAGE] The message received : %s\n",Message_Rec);
     strcpy (Message_Rec , argv[1]);
+    if (debug) 
+      printf ("[DEBUG_MESSAGE] The message received = %s\n",Message_Rec);
+
   }
   else if (argc > 2)
   {
-    if (debug) 
-      printf ("[DEBUG_MESSAGE] The message format is incorrect ! \n"
-             " there's %d additional argument(s)\n", argc-2);
+    if (debug)
+      printf ("[DEBUG_MESSAGE][ERROR] The message format is incorrect ! \n"
+           " there's %d additional argument(s)\n", argc-2);
     return ERROR;
   }
   else
   {
     if (debug)
-      printf ("[DEBUG_MESSAGE] The message format is incorrect ! \n");
+      printf ("[DEBUG_MESSAGE][ERROR] The message format is incorrect ! \n");
     return ERROR;
   }
 
@@ -40,7 +41,8 @@ int main (int argc, char** argv)
   ret = Parsing_CodeByte (Message_Rec);
   if (ret  == ERROR)
   {
-    printf(" Wrong message received\n");
+    if(debug)
+      printf("[ERROR] Wrong message received\n");
     return ERROR;
   }
   else if (ret == RELAY_SIGNAL) // Relay Signal Received
@@ -49,18 +51,16 @@ int main (int argc, char** argv)
     if(debug)
       printf("[DEBUG_MESSAGE] RELAY_SIGNAL_CODE detected \n");
 
-    // Check the message Length
+    // Check the message Length : we have 2 possibility
     if ( (Check_Message_Length (RELAY_SIGNAL_LENGTH_1, Message_Rec) == ERROR) &&
          (Check_Message_Length (RELAY_SIGNAL_LENGTH_2, Message_Rec) == ERROR) )
-    {
-      printf(" Wrong message received\n");
       return ERROR;
-    }
-    if(Parsing_SeqNrByte (&SeqNr_Byte , Message_Parsed , Message_Rec) == ERROR )
-    {
-      printf(" Wrong message received\n");
+
+    // Parsing the Sequence Number Byte
+    ret = Parsing_SeqNrByte (&SeqNr_Byte , Message_Parsed , Message_Rec);
+    if (ret == ERROR )
       return ERROR;
-    }
+
     if (debug)
       printf ("[DEBUG_MESSAGE] After Parsing_SeqNrByte , SeqNr_Byte = %x , Message_Parsed =%s \n"
              , SeqNr_Byte, Message_Parsed, Message_Rec);
@@ -68,10 +68,7 @@ int main (int argc, char** argv)
     // Parsing Relay Bytes   
     ret = Parsing_RelaySignalBytes (Message_Parsed, Message_Parsed);
     if (ret == ERROR)
-    {
-      printf(" Wrong message received\n");
       return ERROR;
-    }
 
     // Sending ACK
     Send_ACK(&SeqNr_Byte);
@@ -80,50 +77,51 @@ int main (int argc, char** argv)
   }
   else if (ret == GET_STATE_SIGNAL ) // Get State Signal Received
   {
+    int ret = ERROR;
     if(debug)
-      printf("[DEBUG_MESSAGE]  GET_SIGNAL_CODE detected \n");
+      printf("[DEBUG_MESSAGE] GET_SIGNAL_CODE detected \n");
     
     //Check the message Length
-    if (Check_Message_Length (GET_STATE_SIGNAL_LENGTH, Message_Rec) == ERROR)
-    {
-      printf("Wrong message received\n");
+    ret = Check_Message_Length (GET_STATE_SIGNAL_LENGTH, Message_Rec);
+    if (ret == ERROR)
       return ERROR;
-    }
+      
+    ret = Parsing_SeqNrByte (&SeqNr_Byte , Message_Parsed , Message_Rec);
+    if (ret == ERROR)
+      return ERROR;
+      
+    printf(" ...GET_STATE_SIGNAL\n");
 
-    if (Parsing_SeqNrByte (&SeqNr_Byte , Message_Parsed , Message_Rec) == ERROR )
-    {
-      printf("Wrong message received\n");
-      return ERROR;
-    }
     //Sending ACK
     Send_ACK(&SeqNr_Byte);
 
+    Relay_0.Value = 1 ; // We supposed that the Relay_0 is closed by default
+
     //Sending Relay_State
-    Send_Relay_State(char* msg_parsed , char* msg);
+    Send_Relay_State(Message_Parsed , Message_Rec);
 
     return SUCCESS;
   }
   else if (ret == QUIT_SIGNAL ) // Quit Signal Received 
   {
     if(debug)
-      printf("[DEBUG_MESSAGE]  QUIT_SIGNAL_CODE detected \n");
+      printf("[DEBUG_MESSAGE] QUIT_SIGNAL_CODE detected \n");
     
     //Check the message Length
     if (Check_Message_Length (QUIT_SIGNAL_LENGTH, Message_Rec) == ERROR)
     {
-      printf("Wrong message received\n");
       return ERROR;
     }
 
     ret = Parsing_SeqNrByte (&SeqNr_Byte , Message_Parsed , Message_Rec);
     if (ret == ERROR)
-    {
-      printf(" Wrong message received\n");
       return ERROR;
-    }
+
+    printf(" ...QUIT_SIGNAL \n");
 
     //Sending ACK
     Send_ACK(&SeqNr_Byte);
+    return SUCCESS;
   }
   else 
   {
@@ -134,5 +132,6 @@ int main (int argc, char** argv)
 
   free (Message_Parsed);
   free (Message_Rec);
-  return 0;
+
+  return SUCCESS;
 }

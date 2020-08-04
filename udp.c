@@ -18,7 +18,7 @@ int Check_Message_Length (int msg_Len , char* msg)
   if (strlen(msg) != msg_Len)
   {
     if(debug)
-      printf ("[DEBUG_MESSAGE] %s fail !, strlen(msg) = %d\n", __func__, strlen(msg) );
+      printf ("[DEBUG_MESSAGE] %s ERROR : Wrong Message Length = %d\n", __func__, strlen(msg));
     return ERROR;
   }
   if(debug)
@@ -47,7 +47,7 @@ int Parsing_CodeByte (char* msg)
   if(msg[2] != ':')
   {
     if(debug)
-      printf ("[DEBUG_MESSAGE] %s , Message format is incorrect !\n", __func__ );
+      printf ("[DEBUG_MESSAGE] %s : Message format is incorrect !\n", __func__ );
     return ERROR;
   } 
 
@@ -68,17 +68,17 @@ int Parsing_CodeByte (char* msg)
 }
 
 /* 
-  -------------------------------------------------------------------------------------
+  ----------------------------------------------------------------------------------------
     Name          | int Byte_Parser (int* Byte_parsed , char* msg_parsed, char* msg )
-  -------------------------------------------------------------------------------------
-    Description   | Parsing the byte after the first ':'  and return it with Hex format
-                  | e.g. msg: 21:a4:44:33:01 => Byte_parsed: a4 | msg_parsed: a4:44:33:01
-  -------------------------------------------------------------------------------------
+  ----------------------------------------------------------------------------------------
+    Description   | Parsing the byte after the first ':'  and convert it to hexadecimal
+                  | e.g msg: "21:a4:44:33:01" >> Byte_parsed "a4" | msg_parsed "a4:44:33:01"
+  ----------------------------------------------------------------------------------------
     Inputs        | char* msg_parsed, char* msg 
-  -------------------------------------------------------------------------------------
+  ----------------------------------------------------------------------------------------
     Outputs       | return 0 : SUCCESS
                   |       -1 : ERROR
- --------------------------------------------------------------------------------------
+ -----------------------------------------------------------------------------------------
 */
 int Byte_Parser (int* byte_parsed , char* msg_parsed , char* msg )
 {
@@ -91,14 +91,16 @@ int Byte_Parser (int* byte_parsed , char* msg_parsed , char* msg )
   char* SpChar_detected; 
   *byte_parsed =  strtol (msg_parsed , &SpChar_detected, 16);
   if(debug)
-    printf("[DEBUG_MESSAGE] %s ,  SpChar_detected= '%c' msg_parsed = %s *byte_parsed = %x\n"
-              , __func__, *SpChar_detected, msg_parsed, *byte_parsed );
-  // Check if the Byte_parsed is not negative or with a wrong format
-  if ( (*byte_parsed < 0) || (*byte_parsed > 255) || (*SpChar_detected!= ':') )
+    printf("[DEBUG_MESSAGE] %s :  SpChar_detected= '%c', msg_parsed = %s, *byte_parsed = %x\n"
+          , __func__, *SpChar_detected, msg_parsed, *byte_parsed );
+
+  // Check if the Byte_parsed is between [0,255] and with the right format
+  if  ( ( *byte_parsed < 0 || *byte_parsed > 255 ) || 
+        ( *SpChar_detected != ':' && strlen(SpChar_detected) ) )//*SpChar_detected != NULL 
   {
     if (debug)
-      printf("[DEBUG_MESSAGE] %s , The message format is incorrect! , SpChar_detected= '%c' \n"
-            , __func__, *SpChar_detected);
+      printf("[DEBUG_MESSAGE][ERROR] %s : Wrong byte format detected, *SpChar_detected= %c \n"
+            , __func__, *SpChar_detected );
     return ERROR;
   }
 
@@ -123,12 +125,12 @@ int Parsing_SeqNrByte (int* SeqNr , char* msg_parsed , char* msg)
   if (ret == ERROR)
   {
     if(debug) 
-      printf("[DEBUG_MESSAGE] %s , The message format is incorrect !\n", __func__);
+      printf("[DEBUG_MESSAGE] %s : The message format is incorrect !\n", __func__);
     return ERROR;
   }
 
   if(debug) 
-    printf("[DEBUG_MESSAGE] %s SUCCESS, SeqNr (hex) = %x \n", __func__, *SeqNr);
+    printf("[DEBUG_MESSAGE] %s SUCCESS: SeqNr (hex) = %x \n", __func__, *SeqNr);
   return ret;
 }
 
@@ -148,11 +150,11 @@ int Parsing_RelayCountByte (int* RelayCount_parsed , char* msg_parsed , char* ms
 {
   int ret = Byte_Parser (RelayCount_parsed , msg_parsed , msg);
   if(debug) 
-    printf("[DEBUG_MESSAGE] %s , RelayCount_parsed = %d \n", __func__, *RelayCount_parsed);
+    printf("[DEBUG_MESSAGE] %s : RelayCount_parsed = %d \n", __func__, *RelayCount_parsed);
   if (ret == ERROR)
   {
     if(debug) 
-      printf("[DEBUG_MESSAGE] %s , The message format is incorrect !\n", __func__);
+      printf("[DEBUG_MESSAGE][ERROR] %s : ERROR :  Wrong RelayCountByte \n", __func__);
     return ret;
   }
   return ret;
@@ -176,13 +178,26 @@ int Parsing_RelayNbrByte (int* RelayNbr_parsed , char* msg_parsed , char* msg)
   
   ret = Byte_Parser (RelayNbr_parsed , msg_parsed , msg);
   if (debug)
-    printf("[DEBUG_MESSAGE] %s ,msg_parsed = %s  RelayNbr_parsed = %d \n", __func__, msg_parsed, *RelayNbr_parsed);
+    printf("[DEBUG_MESSAGE] %s :msg_parsed = %s  RelayNbr_parsed = %d \n"
+          , __func__, msg_parsed, *RelayNbr_parsed);
   if (ret == ERROR)
   {
     if(debug) 
-      printf("[DEBUG_MESSAGE] %s , Parsing the RelayValue Byte KO !\n", __func__);
+      printf("[DEBUG_MESSAGE][ERROR] %s : Parsing the Relay number Byte KO !\n", __func__);
     return ret;
   }
+
+  if (*RelayNbr_parsed == Relay_Nbr_0)
+    printf(" ...Relay 0 :");
+  else if (*RelayNbr_parsed == Relay_Nbr_1)
+    printf(" ...Relay 1 :");
+  else
+  {
+    if(debug)
+      printf("[DEBUG_MESSAGE] %s : Wrong Relay number");
+    return ERROR;
+  }
+
   return ret;
 }
 
@@ -200,30 +215,34 @@ int Parsing_RelayNbrByte (int* RelayNbr_parsed , char* msg_parsed , char* msg)
  */
 int Parsing_RelayValueByte (int* RelayValue_parsed , char* msg_parsed , char* msg)
 {
-  
-  // Find the first Byte (string format) after the caractere ':'
-  strcpy (msg_parsed ,  strchr(msg , ':') + 1 );
-  /* 
-    Convert the byte from string to hexadecimal (base 16) and check if there is 
-    a special character (or an alphabet) using the function strtol().
-  */
-  char* SpChar_detected; 
-  *RelayValue_parsed =  strtol (msg_parsed , &SpChar_detected, 16);
-  if(debug)
-    printf("[DEBUG_MESSAGE] %s ,  SpChar_detected= '%c' msg_parsed = %s *byte_parsed = %x\n"
-              , __func__, *SpChar_detected, msg_parsed, *RelayValue_parsed );
-  // Check if the RelayValue_parsed is not negative or with a wrong format
-  if ( (*RelayValue_parsed < 0) || (*RelayValue_parsed > 255) || (*SpChar_detected) )
+  int ret = ERROR;
+  ret = Byte_Parser (RelayValue_parsed , msg_parsed , msg);
+  if (debug)
+    printf("[DEBUG_MESSAGE] %s :msg_parsed = %s  Relay Value_parsed = %d \n"
+          , __func__, msg_parsed, *RelayValue_parsed);
+  if (ret == ERROR)
   {
-    if (debug)
-      printf("[DEBUG_MESSAGE] %s , The message format is incorrect!, SpChar_detected= '%c' \n"
-            , __func__, *SpChar_detected);
+    if(debug) 
+      printf("[DEBUG_MESSAGE][ERROR] %s : Parsing the Relay Value Byte KO !\n", __func__);
+    return ret;
+  }
+
+  // Check the Relay Value
+  if (*RelayValue_parsed == Relay_Open)
+    printf(" Open \n");
+  
+  else if (*RelayValue_parsed == Relay_Close)
+    printf(" Close \n");
+
+  else
+  {
+    if(debug)
+      printf("[DEBUG_MESSAGE] %s : The message format is incorrect! Wrong Relay number\n");
     return ERROR;
   }
 
   return SUCCESS;
 }
-
 
 /* 
   -----------------------------------------------------------------------------
@@ -246,59 +265,49 @@ int Parsing_RelaySignalBytes (char* msg_parsed , char* msg)
   ret = Parsing_RelayCountByte (&Relay_Count , msg_parsed , msg);
   if(ret == ERROR)
     return ERROR;
-
-  // Check the Relay Count 
+  // 1 Relay detected
   if (Relay_Count == Relay_Count_1)
   {  
+    // Check the message length
+    ret = Check_Message_Length (RELAY_SIGNAL_LENGTH_1 - 6, msg);
+    if(ret == ERROR)
+      return ERROR;
+
     //Parsing Relay Nbr Byte
     ret = Parsing_RelayNbrByte (&Relay_Nbr , msg_parsed , msg_parsed) ;
     if(ret == ERROR)
       return ERROR;
-
-    if (Relay_Nbr == Relay_Nbr_0)
-    {
-      printf(" Relay 0 :");
-    }
-    else if (Relay_Nbr == Relay_Nbr_1)
-    {
-      printf(" Relay 1 :");
-    }
-    else
-    {
-      if(debug)
-        printf("[DEBUG_MESSAGE] %s , The message format is incorrect! Wrong Relay number");
-      return ERROR;
-    }
     
     //Parsing RelayValueByte
     ret = Parsing_RelayValueByte (&Relay_Value , msg_parsed , msg_parsed);
     if (ret == ERROR)
       return ERROR;
-    if (Relay_Value == Relay_Open)
-    {
-      printf(" Open \n");
-    }
-    else if (Relay_Value == Relay_Close)
-      printf(" Close \n");
-    else
-    {
-      if(debug)
-      printf("[DEBUG_MESSAGE] %s , The message format is incorrect! Wrong Relay number\n");
-      return ERROR;
-    }
   }
-  // 2 relay detected
+  // 2 Relay detected
   else if (Relay_Count == Relay_Count_2)
   {
-    if(debug) 
-      printf("[DEBUG_MESSAGE] %s , Relay_Count = %d\n", __func__, Relay_Count);
-    
-    return SUCCESS;
+    // Check the message length
+    ret = Check_Message_Length (RELAY_SIGNAL_LENGTH_2 - 6, msg);
+    if(ret == ERROR)
+      return ERROR;
+
+    //Parsing Relay Nbr Byte
+    int i;
+    for(i=0 ; i <Relay_Count_2 ; i++)
+    {
+      ret = Parsing_RelayNbrByte (&Relay_Nbr , msg_parsed , msg_parsed) ;
+      if(ret == ERROR)
+        return ERROR;
+
+      ret = Parsing_RelayValueByte (&Relay_Value , msg_parsed , msg_parsed);
+      if (ret == ERROR)
+        return ERROR;
+    }
   }
   else 
   {
     if(debug) 
-      printf("[DEBUG_MESSAGE] %s , Bad Relay_Count = %d\n", __func__, Relay_Count); 
+      printf("[DEBUG_MESSAGE][ERROR] %s : Wrong Relay_Count = %d\n", __func__, Relay_Count); 
     return ERROR;
   }
 
@@ -321,11 +330,21 @@ int Parsing_RelaySignalBytes (char* msg_parsed , char* msg)
 void Send_ACK (int* SeqNr )
 {
   if (*SeqNr == 255) 
-    printf(" Send_ACK %s:00\n", ACK_CODE);
+  {
+    if(debug)
+      printf("[DEBUG_MESSAGE] Send_ACK %s:00\n", ACK_CODE);
+  }
   else if (*SeqNr < 15)
-    printf(" Send_ACK %s:0%x\n", ACK_CODE, ++(*SeqNr) );
+  {
+    if(debug)
+      printf("[DEBUG_MESSAGE] Send_ACK %s:0%x\n", ACK_CODE, ++(*SeqNr) );
+  }
   else
-    printf(" Send_ACK %s:%x\n ", ACK_CODE, ++(*SeqNr) );
+  {
+    if(debug)
+      printf("[DEBUG_MESSAGE] Send_ACK %s:%x\n", ACK_CODE, ++(*SeqNr) );
+  }
+
 }
 
 /* 
@@ -341,8 +360,8 @@ void Send_ACK (int* SeqNr )
  */
 void Send_Relay_State(char* msg_parsed , char* msg)
 {
-  printf(" Send Relay State %s:%x:%x", RELAY_STATE_SIGNAL_CODE
-  , RELAY_STATE_SEQNUMB_SEND, Relay_0.Value);
-
+  if(debug)
+    printf(" Send Relay State %s:0%x:0%x\n", RELAY_STATE_SIGNAL_CODE
+          , RELAY_STATE_SEQ_NUMB, Relay_0.Value);
 }
 
